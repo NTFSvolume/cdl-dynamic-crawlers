@@ -6,7 +6,7 @@ Requires `cyberdrop-dl-patched` v8.9.0+
 
 ## How to install
 
-```uv install cyberdrop-dl-patched>=8.9.0 --with cdl-dynamic-crawlers```
+```uv tool install -p 3.12 cyberdrop-dl-patched>=8.9.0 --with cdl-dynamic-crawlers```
 
 ## How to use
 
