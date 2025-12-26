@@ -81,5 +81,7 @@ def _register_crawler(
         existing_crawlers[domain] = crawler
 
 
-def main() -> Callable[[Manager], None]:
+def main(manager: Manager | None = None) -> Callable[[Manager], None] | None:
+    if manager:
+        return _load_crawlers(manager)
     return _load_crawlers
