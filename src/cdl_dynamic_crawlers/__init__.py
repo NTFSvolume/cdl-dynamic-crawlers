@@ -33,13 +33,7 @@ def _import_crawlers(path: Path) -> Generator[type[Crawler]]:
         yield cls
 
 
-def main() -> Callable[[Manager], None]:
-    return _load_crawlers
-
-
 def _load_crawlers(manager: Manager) -> None:
-    from cyberdrop_dl.scraper.scrape_mapper import register_crawler
-
     for file in (manager.path_manager.appdata / "crawlers").glob("*.py"):
         for crawler_cls in _import_crawlers(file):
             if crawler_cls.IS_GENERIC or crawler_cls.IS_ABC or crawler_cls.IS_FALLBACK_GENERIC:
@@ -47,8 +41,45 @@ def _load_crawlers(manager: Manager) -> None:
 
             crawler = crawler_cls(manager)
             try:
-                register_crawler(
-                    manager.scrape_mapper.existing_crawlers, crawler, from_user="raise"
-                )
+                _register_crawler(manager.scrape_mapper.existing_crawlers, crawler)
             except ValueError:
                 continue
+
+
+def _register_crawler(
+    existing_crawlers: dict[str, Crawler],
+    crawler: Crawler,
+    include_generics: bool = False,
+) -> None:
+    from cyberdrop_dl.scraper.scrape_mapper import match_url_to_crawler
+    from cyberdrop_dl.utils.logger import log
+
+    if crawler.IS_FALLBACK_GENERIC:
+        return
+    if crawler.IS_GENERIC and include_generics:
+        keys = (crawler.GENERIC_NAME,)
+    else:
+        keys = crawler.SCRAPE_MAPPER_KEYS
+
+    for domain in keys:
+        other = existing_crawlers.get(domain) or match_url_to_crawler(
+            existing_crawlers, crawler.PRIMARY_URL
+        )
+        name = getattr(crawler, "GENERIC_NAME", crawler.NAME)
+
+        if other:
+            msg = (
+                f"Unable to assign {domain = } to crawler {name} ({crawler.PRIMARY_URL}). "
+                f"URL conflicts with URL format of builtin crawler {other.NAME}. "
+                "URL will be ignored"
+            )
+
+            raise ValueError(msg)
+
+        log(f"Successfully mapped {domain = } to crawler {name}")
+
+        existing_crawlers[domain] = crawler
+
+
+def main() -> Callable[[Manager], None]:
+    return _load_crawlers
