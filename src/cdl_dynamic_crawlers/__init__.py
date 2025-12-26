@@ -34,6 +34,8 @@ def _import_crawlers(path: Path) -> Generator[type[Crawler]]:
 
 
 def _load_crawlers(manager: Manager) -> None:
+    from cyberdrop_dl.utils.logger import log
+
     for file in (manager.path_manager.appdata / "crawlers").glob("*.py"):
         for crawler_cls in _import_crawlers(file):
             if crawler_cls.IS_GENERIC or crawler_cls.IS_ABC or crawler_cls.IS_FALLBACK_GENERIC:
@@ -42,8 +44,8 @@ def _load_crawlers(manager: Manager) -> None:
             crawler = crawler_cls(manager)
             try:
                 _register_crawler(manager.scrape_mapper.existing_crawlers, crawler)
-            except ValueError:
-                continue
+            except ValueError as e:
+                log(str(e), 30)
 
 
 def _register_crawler(
